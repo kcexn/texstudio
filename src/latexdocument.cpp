@@ -2752,18 +2752,28 @@ int LatexDocument::lineToLineSnapshotLineNumber(const QDocumentLine &line)
 	return mLineSnapshot.indexOf(line.handle());
 }
 
+static QStringList getPathOption(const QString& option) {
+    return ConfigManagerInterface::getInstance()->getOption(option)
+        .toString()
+        .split(getPathListSeparator());
+}
 QString LatexDocument::findFileName(QString fname)
 {
-	QString curPath = ensureTrailingDirSeparator(getFileInfo().absolutePath());
-    QStringList additionalInputPaths = ConfigManagerInterface::getInstance()->getOption("Files/Input Paths").toString().split(getPathListSeparator());
-	QString result;
-    if (QFile(getAbsoluteFilePath(fname, ".tex", additionalInputPaths)).exists())
-        result = QFileInfo(getAbsoluteFilePath(fname, ".tex", additionalInputPaths)).absoluteFilePath();
-    if (result.isEmpty() && QFile(getAbsoluteFilePath(curPath + fname, ".tex", additionalInputPaths)).exists())
-        result = QFileInfo(getAbsoluteFilePath(curPath + fname, ".tex", additionalInputPaths)).absoluteFilePath();
-    if (result.isEmpty() && QFile(getAbsoluteFilePath(curPath + fname, "", additionalInputPaths)).exists())
-        result = QFileInfo(getAbsoluteFilePath(curPath + fname, "", additionalInputPaths)).absoluteFilePath();
-	return result;
+    QStringList searchPaths;
+    searchPaths << ensureTrailingDirSeparator(getFileInfo().absolutePath());
+    searchPaths << getPathOption("Files/Input Paths");
+    for(const auto& path: std::as_const(searchPaths)) {
+        using IteratorFlags = QDirIterator::IteratorFlags;
+        IteratorFlags flags{QDirIterator::NoIteratorFlags};
+        // TeX configuration files treat trailing // or
+        // trailing \\ as a recursive glob.
+        if(path.endsWith("//") || path.endsWith("\\\\"))
+            flags |= QDirIterator::Subdirectories;
+        QDirIterator jt{path, {fname+".tex"}, QDir::Files, flags};
+        if (jt.hasNext())
+            return QFileInfo(jt.next()).absoluteFilePath();
+    }
+    return QString();
 }
 
 void LatexDocuments::bibTeXFilesNeedUpdate()
