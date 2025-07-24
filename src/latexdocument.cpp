@@ -3244,17 +3244,17 @@ static QStringList getSearchPath(const QString &extension) {
 
 QString LatexDocument::getAbsoluteFilePath(const QString &relName, const QString &extension, const QStringList &additionalSearchPaths) const
 {
-    QStringList searchPaths = getSearchPath(extension);
-    const LatexDocument *rootDoc = getRootDocument(nullptr,true);
-    QString compileFileName = rootDoc->getFileName();
-    if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
-    QString fallbackPath;
-    if (!compileFileName.isEmpty()) {
-        fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
-        searchPaths << fallbackPath;
-    }
-    searchPaths << additionalSearchPaths;
-    return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
+	QStringList searchPaths = getSearchPath(extension);
+	const LatexDocument *rootDoc = getRootDocument(nullptr,true);
+	QString compileFileName = rootDoc->getFileName();
+	if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
+	QString fallbackPath;
+	if (!compileFileName.isEmpty()) {
+		fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
+		qsearchPaths << fallbackPath;
+	}
+	searchPaths << additionalSearchPaths;
+	return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
 }
 
 void LatexDocuments::lineGrammarChecked(LatexDocument *doc, QDocumentLineHandle *line, int lineNr, const QList<GrammarError> &errors)
