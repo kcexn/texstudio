@@ -3251,7 +3251,7 @@ QString LatexDocument::getAbsoluteFilePath(const QString &relName, const QString
 	QString fallbackPath;
 	if (!compileFileName.isEmpty()) {
 		fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
-		qsearchPaths << fallbackPath;
+		searchPaths << fallbackPath;
 	}
 	searchPaths << additionalSearchPaths;
 	return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
