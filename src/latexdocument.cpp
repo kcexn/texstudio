@@ -2754,8 +2754,8 @@ int LatexDocument::lineToLineSnapshotLineNumber(const QDocumentLine &line)
 
 QString LatexDocument::findFileName(QString fname)
 {
-    QString curPath = ensureTrailingDirSeparator(getFileInfo().absolutePath());
-    QString result;
+	QString curPath = ensureTrailingDirSeparator(getFileInfo().absolutePath());
+	QString result;
 	if (QFile(getAbsoluteFilePath(fname, ".tex")).exists())
 		result = QFileInfo(getAbsoluteFilePath(fname, ".tex")).absoluteFilePath();
 	if (result.isEmpty() && QFile(getAbsoluteFilePath(curPath + fname, ".tex")).exists())
