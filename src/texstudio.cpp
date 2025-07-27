@@ -2096,9 +2096,8 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
     auto debouncedPatchStructure = debounce(
         [accumulatedRange, doc]() {
             if (accumulatedRange->has_value()) {
-                auto &range = accumulatedRange->value();
-                int startLine = range.first;
-                int linesChanged = range.second - startLine;
+                const auto &[startLine, endLine] = accumulatedRange->value();
+                int linesChanged = endLine - startLine;
                 doc->patchStructure(startLine, linesChanged);
                 accumulatedRange->reset();
             }
@@ -2111,12 +2110,12 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
         doc,
         [accumulatedRange, debouncedPatchStructure](int line, int lines) {
             int endLine = line + lines;
-            if (!accumulatedRange->has_value()) {
-                *accumulatedRange = {line, endLine};
+            if (accumulatedRange->has_value()) {
+                auto &[rangeStart, rangeEnd] = accumulatedRange->value();
+                rangeStart = (std::min)(rangeStart, line);
+                rangeEnd = (std::max)(rangeEnd, endLine);
             } else {
-                auto &range = accumulatedRange->value();
-                range.first = (std::min)(range.first, line);
-                range.second = (std::max)(range.second, endLine);
+                *accumulatedRange = {line, endLine};
             }
             debouncedPatchStructure();
         }
