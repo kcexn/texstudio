@@ -92,7 +92,7 @@ debounce(Func&& func, QObject* context, int durationMs = 300)
 
     // This static counter ensures that each call to debounce gets a unique ID,
     // preventing collisions when creating multiple debounced functions.
-    static size_t debounce_counter = 0;
+    static std::size_t debounce_counter = 0;
     const std::string timerPropertyName =
         "_debounce_timer_" + std::to_string(reinterpret_cast<uintptr_t>(context)) + "_" + std::to_string(debounce_counter++);
 
