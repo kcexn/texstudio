@@ -3210,7 +3210,7 @@ LatexDocument *LatexDocuments::getRootDocumentForDoc(LatexDocument *doc,bool bre
 
 static QStringList getSearchPath(const QString &extension) {
     static QMap<QString, QStringList> kpsePaths;
-    const auto handle_errors = [&](QProcess::ProcessError error, int lineno) {
+    const auto handle_errors = [](QProcess::ProcessError error, int lineno) {
         static qint64 silent_until = 0;
         constexpr qint64 fiveMin = 300;
         const auto now = QDateTime::currentSecsSinceEpoch();
