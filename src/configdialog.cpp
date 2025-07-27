@@ -902,7 +902,7 @@ void ConfigDialog::browsePathBib()
 
 void ConfigDialog::browsePathInputs()
 {
-    UtilsUi::browse(ui.lineEditPathInputs, tr("Search Path .tex Files"), "/", QDir::currentPath(), true);
+    UtilsUi::browse(ui.lineEditPathInputs, tr("Search Path .bib Files"), "/", QDir::currentPath(), true);
 }
 
 void ConfigDialog::browsePathImages()
