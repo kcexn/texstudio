@@ -9997,14 +9997,6 @@ void Texstudio::findMissingBracket()
 	if (c.isValid()) currentEditor()->setCursor(c);
 }
 
-static QString makeFilename(const QString &name, const QString &defaultExt) {
-    auto pos = name.lastIndexOf(".");
-    if (pos == 0) // names like "."
-        return name;
-    if (pos == -1 || name.back() == '.') // names without extension (can end with '.')
-        return name + defaultExt;
-    return name;
-}
 LatexEditorView* Texstudio::openExternalFile(QString name, const QString &defaultExt, LatexDocument *doc, bool relativeToCurrentDoc)
 {
 	if (!doc) {
@@ -10019,25 +10011,16 @@ LatexEditorView* Texstudio::openExternalFile(QString name, const QString &defaul
         name.chop(1);
     }
     QStringList curPaths;
-    curPaths << ensureTrailingDirSeparator(doc->getFileInfo().absolutePath());
     if (defaultExt == "bib") {
         curPaths << configManager.additionalBibPaths.split(getPathListSeparator());
     }
-    curPaths << configManager.additionalInputPaths.split(getPathListSeparator());
+    if(relativeToCurrentDoc){
+        curPaths<< ensureTrailingDirSeparator(doc->getFileInfo().absolutePath());
+    }
     LatexEditorView * loaded = nullptr;
-    const auto& fname = makeFilename(name, defaultExt);
-    auto cbegin = curPaths.cbegin(), cend = curPaths.cend();
-    for (auto cit=cbegin; !loaded && cit != cend; ++cit) {
-        using IteratorFlags = QDirIterator::IteratorFlags;
-        IteratorFlags flags{QDirIterator::NoIteratorFlags};
-        const auto& path = *cit;
-        // TeX configuration files treat trailing // or
-        // trailing \\ as a recursive glob.
-        if(path.endsWith("//") || path.endsWith("\\\\"))
-            flags |= QDirIterator::Subdirectories;
-        QDirIterator jt{path, {fname}, QDir::Files, flags};
-        while (!loaded && jt.hasNext())
-            loaded = load(QFileInfo(jt.next()).absoluteFilePath());
+    loaded = load(doc->getAbsoluteFilePath(name, defaultExt,curPaths));
+    if(loaded == nullptr){
+        loaded = load(doc->getAbsoluteFilePath(name, "",curPaths));
     }
 
     if (loaded == nullptr) {
