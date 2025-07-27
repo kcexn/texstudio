@@ -23,6 +23,7 @@
 #include "debuglogger.h"
 
 #include "dblclickmenubar.h"
+#include "debouncer.h"
 #include "filechooser.h"
 #include "filedialog.h"
 #include "findindirs.h"
@@ -2087,8 +2088,39 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
     // set speller here as document is needed
     edit->setSpellerManager(&spellerManager);
     edit->setSpeller("<default>");
+
     //patch Structure
-    connect(edit->editor->document(), SIGNAL(contentsChange(int,int)), edit->document, SLOT(patchStructure(int,int)));
+    using PatchAccumulator = std::optional<std::pair<int, int> >;
+    auto accumulatedRange = std::make_shared<PatchAccumulator>();
+    auto *doc = edit->document;
+    auto debouncedPatchStructure = debounce(
+        [accumulatedRange, doc]() {
+            if (accumulatedRange->has_value()) {
+                auto &range = accumulatedRange->value();
+                int startLine = range.first;
+                int linesChanged = range.second - startLine;
+                doc->patchStructure(startLine, linesChanged);
+                accumulatedRange->reset();
+            }
+        },
+        doc
+    );
+    connect(
+        edit->editor->document(),
+        &QDocument::contentsChange,
+        doc,
+        [accumulatedRange, debouncedPatchStructure](int line, int lines) {
+            int endLine = line + lines;
+            if (!accumulatedRange->has_value()) {
+                *accumulatedRange = {line, endLine};
+            } else {
+                auto &range = accumulatedRange->value();
+                range.first = (std::min)(range.first, line);
+                range.second = (std::max)(range.second, endLine);
+            }
+            debouncedPatchStructure();
+        }
+    );
     connect(edit->editor->document(), SIGNAL(linesRemoved(QDocumentLineHandle*,int,int)), edit->document, SLOT(patchStructureRemoval(QDocumentLineHandle*,int,int)));
     connect(edit->document, &LatexDocument::updateCompleter, this, &Texstudio::completerNeedsUpdate);
     connect(edit->document, &LatexDocument::updateCompleterCommands, this, &Texstudio::completerCommandsNeedsUpdate);
