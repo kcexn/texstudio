@@ -88,6 +88,7 @@
 #include <set>
 #include <QStyleHints>
 #ifdef Q_OS_WIN
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -2090,36 +2091,27 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
     edit->setSpeller("<default>");
 
     //patch Structure
-    using PatchAccumulator = std::optional<std::pair<int, int> >;
-    auto accumulatedRange = std::make_shared<PatchAccumulator>();
-    auto *doc = edit->document;
-    auto debouncedPatchStructure = debounce(
-        [accumulatedRange, doc]() {
-            if (accumulatedRange->has_value()) {
-                const auto &[startLine, endLine] = accumulatedRange->value();
-                int linesChanged = endLine - startLine;
-                doc->patchStructure(startLine, linesChanged);
-                accumulatedRange->reset();
-            }
-        },
-        doc
-    );
+    auto trackChanges = std::make_shared<std::pair<int, int> >(INT_MAX, INT_MIN);
+    auto debouncedPatchStructure = debounce([trackChanges, doc=edit->document]() {
+        const auto &[startLine, endLine] = *trackChanges;
+        if (startLine <= endLine) {
+            doc->patchStructure(startLine, endLine - startLine);
+            *trackChanges = {INT_MAX, INT_MIN};
+        }
+    }, edit->document);
+
     connect(
         edit->editor->document(),
         &QDocument::contentsChange,
-        doc,
-        [accumulatedRange, debouncedPatchStructure](int line, int lines) {
-            int endLine = line + lines;
-            if (accumulatedRange->has_value()) {
-                auto &[rangeStart, rangeEnd] = accumulatedRange->value();
-                rangeStart = (std::min)(rangeStart, line);
-                rangeEnd = (std::max)(rangeEnd, endLine);
-            } else {
-                *accumulatedRange = {line, endLine};
-            }
-            debouncedPatchStructure();
+        edit->document,
+        [trackChanges, patchStructure=std::move(debouncedPatchStructure)](int line, int lines) {
+            auto &[startLine, endLine] = *trackChanges;
+            startLine = std::min(startLine, line);
+            endLine = std::max(endLine, line+lines);
+            patchStructure();
         }
     );
+
     connect(edit->editor->document(), SIGNAL(linesRemoved(QDocumentLineHandle*,int,int)), edit->document, SLOT(patchStructureRemoval(QDocumentLineHandle*,int,int)));
     connect(edit->document, &LatexDocument::updateCompleter, this, &Texstudio::completerNeedsUpdate);
     connect(edit->document, &LatexDocument::updateCompleterCommands, this, &Texstudio::completerCommandsNeedsUpdate);
