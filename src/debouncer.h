@@ -1,7 +1,11 @@
 #pragma once
-#ifndef DEBOUNCER_H
-#define DEBOUNCER_H
-#include "mostQtHeaders.h"
+#ifndef Header_Debouncer
+#define Header_Debouncer
+#include <QObject>
+#include <QTimer>
+#include <QVariant>
+
+// --- FUNCTION TRAITS ---
 
 // Primary template
 template<typename T>
@@ -28,6 +32,14 @@ template<typename ReturnType, typename... Args>
 struct function_traits<ReturnType(*)(Args...)> {
     using signature = std::function<ReturnType(Args...)>;
 };
+
+// --- COMPILE-TIME VALIDATION ---
+
+template<typename T, typename = void>
+struct is_valid_callable : std::false_type {};
+
+template<typename T>
+struct is_valid_callable<T, std::void_t<typename function_traits<T>::signature>> : std::true_type {};
 
 /*!
  * \brief Creates a debounced version of a slot or callable.
@@ -71,9 +83,18 @@ template <typename Func>
 typename function_traits<std::decay_t<Func>>::signature
 debounce(Func&& func, QObject* context, int durationMs = 300)
 {
+    static_assert(is_valid_callable<std::decay_t<Func>>::value,
+                  "debounce() requires a callable type like a lambda, functor, or function pointer.");
+    assert(context != nullptr && "Context object cannot be null.");
+    assert(durationMs >= 0 && "Duration must be non-negative.");
+
     auto shared_func = std::make_shared<std::decay_t<Func>>(std::forward<Func>(func));
+
+    // This static counter ensures that each call to debounce gets a unique ID,
+    // preventing collisions when creating multiple debounced functions.
+    static size_t debounce_counter = 0;
     const std::string timerPropertyName =
-        "_debounce_timer_" + std::to_string(reinterpret_cast<uintptr_t>(&func));
+        "_debounce_timer_" + std::to_string(reinterpret_cast<uintptr_t>(context)) + "_" + std::to_string(debounce_counter++);
 
     return [shared_func, context, durationMs, timerPropertyName]
         (auto&&... args) mutable
