@@ -1,3 +1,6 @@
+/***************************************************************************
+ *   copyright       : (C) 2025 by Kevin Exton <kevin.exton@pm.me>         *
+ ***************************************************************************/
 #pragma once
 #ifndef Header_Debouncer
 #define Header_Debouncer
