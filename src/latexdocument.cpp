@@ -3249,7 +3249,7 @@ static QStringList getSearchPath(QString extension) {
 QString LatexDocument::getAbsoluteFilePath(const QString &relName, const QString &extension, const QStringList &additionalSearchPaths) const
 {
     QStringList searchPaths = getSearchPath(extension);
-    for(const auto& path: std::as_const(additionalSearchPaths))
+    for(const auto &path: std::as_const(additionalSearchPaths))
         searchPaths.prepend(path);
     const LatexDocument *rootDoc = getRootDocument(nullptr,true);
     QString compileFileName = rootDoc->getFileName();
