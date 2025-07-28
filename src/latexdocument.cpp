@@ -3252,13 +3252,13 @@ QString LatexDocument::getAbsoluteFilePath(const QString &relName, const QString
     for(const auto& path: std::as_const(additionalSearchPaths))
         searchPaths.prepend(path);
     const LatexDocument *rootDoc = getRootDocument(nullptr,true);
-	QString compileFileName = rootDoc->getFileName();
-	if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
-	QString fallbackPath;
-	if (!compileFileName.isEmpty()) {
+    QString compileFileName = rootDoc->getFileName();
+    if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
+    QString fallbackPath;
+    if (!compileFileName.isEmpty()) {
         fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
         searchPaths.prepend(fallbackPath);
-	}
+    }
     return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
 }
 
