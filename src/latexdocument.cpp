@@ -3208,7 +3208,10 @@ LatexDocument *LatexDocuments::getRootDocumentForDoc(LatexDocument *doc,bool bre
     return const_cast<LatexDocument *>(current->getRootDocument(nullptr,breakAtSubfileRoot));
 }
 
-static QStringList getSearchPath(const QString &extension) {
+static QStringList getSearchPath(QString extension) {
+    if(extension.isEmpty())
+        return {};
+
     static QMap<QString, QStringList> kpsePaths;
     const auto handle_errors = [](QProcess::ProcessError error, int lineno) {
         static qint64 silent_until = 0;
@@ -3222,6 +3225,8 @@ static QStringList getSearchPath(const QString &extension) {
         return QStringList();
     };
 
+    if(extension.front() == '.')
+        extension.erase(extension.cbegin());
     auto pathIter = kpsePaths.find(extension);
     if (pathIter == kpsePaths.end()) {
         QProcess kpsewhich;
