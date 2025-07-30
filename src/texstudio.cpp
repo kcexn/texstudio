@@ -2095,7 +2095,7 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
         &QDocument::contentsChange,
         edit->document,
         [trackChanges = std::make_pair(INT_MAX, INT_MIN),
-         patchStructure = debounce([doc=edit->document](int &startLine, int &endLine) {
+         debouncedPatchStructure = debounce([doc=edit->document](int &startLine, int &endLine) {
              doc->patchStructure(startLine, endLine - startLine);
              startLine = INT_MAX, endLine = INT_MIN;
          }, edit->document)
@@ -2103,7 +2103,7 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
             auto &[startLine, endLine] = trackChanges;
             startLine = std::min(startLine, line);
             endLine = std::max(endLine, line+lines);
-            patchStructure(startLine, endLine);
+            debouncedPatchStructure(startLine, endLine);
         }
     );
     connect(edit->editor->document(), SIGNAL(linesRemoved(QDocumentLineHandle*,int,int)), edit->document, SLOT(patchStructureRemoval(QDocumentLineHandle*,int,int)));
