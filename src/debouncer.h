@@ -105,9 +105,8 @@ namespace detail {
 
         ~Debouncer() {
             std::lock_guard lk(m_mutex);
-            if (*m_connection) {
+            if (*m_connection)
                 QObject::disconnect(*m_connection);
-            }
         }
 
     private:
