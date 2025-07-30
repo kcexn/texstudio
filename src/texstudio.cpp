@@ -2089,29 +2089,23 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
     // set speller here as document is needed
     edit->setSpellerManager(&spellerManager);
     edit->setSpeller("<default>");
-
     //patch Structure
-    auto trackChanges = std::make_shared<std::pair<int, int> >(INT_MAX, INT_MIN);
-    auto debouncedPatchStructure = debounce([trackChanges, doc=edit->document]() {
-        const auto &[startLine, endLine] = *trackChanges;
-        if (startLine <= endLine) {
-            doc->patchStructure(startLine, endLine - startLine);
-            *trackChanges = {INT_MAX, INT_MIN};
-        }
-    }, edit->document);
-
     connect(
         edit->editor->document(),
         &QDocument::contentsChange,
         edit->document,
-        [trackChanges, patchStructure=std::move(debouncedPatchStructure)](int line, int lines) {
-            auto &[startLine, endLine] = *trackChanges;
+        [trackChanges = std::make_pair(INT_MAX, INT_MIN),
+         patchStructure = debounce([doc=edit->document](int &startLine, int &endLine) {
+             doc->patchStructure(startLine, endLine - startLine);
+             startLine = INT_MAX, endLine = INT_MIN;
+         }, edit->document)
+        ](int line, int lines) mutable {
+            auto &[startLine, endLine] = trackChanges;
             startLine = std::min(startLine, line);
             endLine = std::max(endLine, line+lines);
-            patchStructure();
+            patchStructure(startLine, endLine);
         }
     );
-
     connect(edit->editor->document(), SIGNAL(linesRemoved(QDocumentLineHandle*,int,int)), edit->document, SLOT(patchStructureRemoval(QDocumentLineHandle*,int,int)));
     connect(edit->document, &LatexDocument::updateCompleter, this, &Texstudio::completerNeedsUpdate);
     connect(edit->document, &LatexDocument::updateCompleterCommands, this, &Texstudio::completerCommandsNeedsUpdate);

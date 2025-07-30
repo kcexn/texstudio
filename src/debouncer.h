@@ -46,10 +46,10 @@ namespace detail {
         {}
 
         Debouncer(Func&& func, QObject *context, int durationMs)
-            : m_context(context),
-            m_func(std::make_unique<std::decay_t<Func>>(std::forward<Func>(func))),
-            m_timer(new QTimer(context)),
-            m_connection(std::make_unique<QMetaObject::Connection>())
+            : m_context{context},
+            m_func{std::make_unique<std::decay_t<Func>>(std::forward<Func>(func))},
+            m_timer{new QTimer(context)},
+            m_connection{std::make_unique<QMetaObject::Connection>()}
         {
             m_timer->setInterval(durationMs);
             m_timer->setSingleShot(true);
@@ -95,7 +95,7 @@ namespace detail {
                 m_timer,
                 &QTimer::timeout,
                 m_context,
-                [=, packed_args=std::make_tuple(std::forward<Args>(args)...)]() {
+                [=, packed_args=std::forward_as_tuple(std::forward<Args>(args)...)]() {
                     std::apply(*m_func, std::move(packed_args));
                 }
             );
@@ -146,10 +146,6 @@ namespace detail {
  * \note The lifetime of the internal `QTimer` is tied to the `context` object.
  * If the `context` object is destroyed, the debounced function will
  * cease to work.
- *
- * \note The arguments passed to the debounced function are copied and stored
- * internally. They are moved into the final function call when it executes.
- * This ensures that references to temporary objects remain valid.
  *
  * \code
  * // Example usage in a QWidget
