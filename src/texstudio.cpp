@@ -23,6 +23,7 @@
 #include "debuglogger.h"
 
 #include "dblclickmenubar.h"
+#include "debouncer.h"
 #include "filechooser.h"
 #include "filedialog.h"
 #include "findindirs.h"
@@ -89,6 +90,7 @@
 #include <QStyleHints>
 #include <QtConcurrentMap>
 #ifdef Q_OS_WIN
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -2148,7 +2150,22 @@ void Texstudio::configureNewEditorViewEnd(LatexEditorView *edit, bool reloadFrom
     edit->setSpellerManager(&spellerManager);
     edit->setSpeller("<default>");
     //patch Structure
-    connect(edit->editor->document(), SIGNAL(contentsChange(int,int)), edit->document, SLOT(patchStructure(int,int)));
+    connect(
+        edit->editor->document(),
+        &QDocument::contentsChange,
+        edit->document,
+        [trackChanges = std::make_pair(INT_MAX, INT_MIN),
+         debouncedPatch = debounce([doc=edit->document](auto &trackChanges) {
+            auto [startLine, endLine] = trackChanges;
+            doc->patchStructure(startLine, endLine - startLine);
+            trackChanges = {INT_MAX, INT_MIN};
+         }, edit->document)
+        ](int line, int lines) mutable {
+            auto [startLine, endLine] = trackChanges;
+            trackChanges = {std::min(startLine, line), std::max(endLine, line + lines)};
+            debouncedPatch(trackChanges);
+        }
+    );
     connect(edit->editor->document(), SIGNAL(changedText(int,int,int,int,const QString&)), this, SLOT(updateCollaborationEditors(int,int,int,int,const QString&)));
     connect(edit->editor->document(), SIGNAL(linesRemoved(QDocumentLineHandle*,int,int)), edit->document, SLOT(patchStructureRemoval(QDocumentLineHandle*,int,int)));
     connect(edit->document, &LatexDocument::updateCompleter, this, &Texstudio::completerNeedsUpdate);

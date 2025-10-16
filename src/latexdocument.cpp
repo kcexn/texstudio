@@ -3406,19 +3406,58 @@ LatexDocument *LatexDocuments::getRootDocumentForDoc(LatexDocument *doc,bool bre
     return const_cast<LatexDocument *>(current->getRootDocument(nullptr,breakAtSubfileRoot));
 }
 
+static QStringList getSearchPath(QString extension) {
+    if(extension.isEmpty())
+        return {};
+
+    static QMap<QString, QStringList> kpsePaths;
+    const auto handle_errors = [](QProcess::ProcessError error, int lineno) {
+        static qint64 silent_until = 0;
+        constexpr qint64 fiveMin = 300;
+        const auto now = QDateTime::currentSecsSinceEpoch();
+        if(now > silent_until) {
+            QString filename{QFileInfo(__FILE__).fileName()};
+            qCritical() << error << "in" << qPrintable(filename) << "at line" << lineno;
+            silent_until = now + fiveMin;
+        }
+        return QStringList();
+    };
+
+    if(extension.front() == '.')
+        extension.erase(extension.cbegin());
+    auto pathIter = kpsePaths.find(extension);
+    if (pathIter == kpsePaths.end()) {
+        QProcess kpsewhich;
+        kpsewhich.start("kpsewhich", QStringList() << "-show-path="+extension, QProcess::ReadOnly);
+        if(!kpsewhich.waitForFinished())
+            return handle_errors(kpsewhich.error(), __LINE__);
+        QString path = QString(kpsewhich.readAllStandardOutput()).trimmed();
+        kpsewhich.start("kpsewhich", QStringList() << "-expand-path="+path, QProcess::ReadOnly);
+        if(!kpsewhich.waitForFinished())
+            return handle_errors(kpsewhich.error(), __LINE__);
+        path = QString(kpsewhich.readAllStandardOutput()).trimmed();
+#ifdef Q_OS_WIN
+        path.replace("/", "\\");
+#endif
+        pathIter = kpsePaths.insert(extension, path.split(getPathListSeparator()));
+    }
+    return pathIter.value();
+}
+
 QString LatexDocument::getAbsoluteFilePath(const QString &relName, const QString &extension, const QStringList &additionalSearchPaths) const
 {
-	QStringList searchPaths;
+    QStringList searchPaths = getSearchPath(extension);
+    for(const auto &path: std::as_const(additionalSearchPaths))
+        searchPaths.prepend(path);
     const LatexDocument *rootDoc = getRootDocument(nullptr,true);
-	QString compileFileName = rootDoc->getFileName();
-	if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
-	QString fallbackPath;
-	if (!compileFileName.isEmpty()) {
-		fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
-		searchPaths << fallbackPath;
-	}
-	searchPaths << additionalSearchPaths;
-	return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
+    QString compileFileName = rootDoc->getFileName();
+    if (compileFileName.isEmpty()) compileFileName = rootDoc->getTemporaryFileName();
+    QString fallbackPath;
+    if (!compileFileName.isEmpty()) {
+        fallbackPath = QFileInfo(compileFileName).absolutePath(); //when the file does not exist, resolve it relative to document (e.g. to create it there)
+        searchPaths.prepend(fallbackPath);
+    }
+    return findAbsoluteFilePath(relName, extension, searchPaths, fallbackPath);
 }
 
 void LatexDocuments::lineGrammarChecked(LatexDocument *doc, QDocumentLineHandle *line, int lineNr, const QList<GrammarError> &errors)
